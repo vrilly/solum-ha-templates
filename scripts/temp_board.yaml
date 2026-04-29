@@ -1,0 +1,268 @@
+blueprint:
+  name: OpenEPaperLink Solum M2 Klimauebersicht
+  description: >-
+    Zeichnet alle Raum-Klimawerte auf ein Solum-M2-Tag:
+    Wohnzimmer, Schlafzimmer, Badezimmer und WC-Zimmer.
+  domain: script
+  input:
+    display_target:
+      name: Anzeigeziel
+      description: OpenEPaperLink Ziel (Entitaet, Geraet oder Bereich)
+      selector:
+        target: {}
+
+    font_file:
+      name: Schriftart
+      description: >-
+        Dateiname oder absoluter Pfad zur Schriftart (z. B. rbm.ttf oder
+        /media/fonts/DejaVuSans-Bold.ttf).
+      default: rbm.ttf
+
+    wohnzimmer_temp_entity:
+      name: Wohnzimmer Temperatur Entitaet
+      selector:
+        entity:
+          domain: sensor
+      default: sensor.wohnzimmer_th_temperature
+
+    wohnzimmer_hum_entity:
+      name: Wohnzimmer Luftfeuchte Entitaet
+      selector:
+        entity:
+          domain: sensor
+      default: sensor.wohnzimmer_th_humidity
+
+    schlafzimmer_temp_entity:
+      name: Schlafzimmer Temperatur Entitaet
+      selector:
+        entity:
+          domain: sensor
+      default: sensor.schlafzimmer_th_temperature
+
+    schlafzimmer_hum_entity:
+      name: Schlafzimmer Luftfeuchte Entitaet
+      selector:
+        entity:
+          domain: sensor
+      default: sensor.schlafzimmer_th_humidity
+
+    bad_temp_entity:
+      name: Badezimmer Temperatur Entitaet
+      selector:
+        entity:
+          domain: sensor
+      default: sensor.bad_th_temperature
+
+    bad_hum_entity:
+      name: Badezimmer Luftfeuchte Entitaet
+      selector:
+        entity:
+          domain: sensor
+      default: sensor.bad_th_humidity
+
+    bad_window_entity:
+      name: Badezimmer Fenster Entitaet
+      selector:
+        entity:
+          domain: binary_sensor
+      default: binary_sensor.bad_window_sensor
+
+    wc_temp_entity:
+      name: WC-Zimmer Temperatur Entitaet
+      selector:
+        entity:
+          domain: sensor
+      default: sensor.toilet_th_temperature
+
+    wc_hum_entity:
+      name: WC-Zimmer Luftfeuchte Entitaet
+      selector:
+        entity:
+          domain: sensor
+      default: sensor.toilet_th_humidity
+
+sequence:
+  - variables:
+      font_file: !input font_file
+      wohn_t_entity: !input wohnzimmer_temp_entity
+      wohn_h_entity: !input wohnzimmer_hum_entity
+      schlaf_t_entity: !input schlafzimmer_temp_entity
+      schlaf_h_entity: !input schlafzimmer_hum_entity
+      bad_t_entity: !input bad_temp_entity
+      bad_h_entity: !input bad_hum_entity
+      bad_w_entity: !input bad_window_entity
+      wc_t_entity: !input wc_temp_entity
+      wc_h_entity: !input wc_hum_entity
+
+      wohn_t: "{{ states(wohn_t_entity) | float(0) | round(1) }}"
+      wohn_h: "{{ states(wohn_h_entity) | float(0) | round(0) }}"
+      schlaf_t: "{{ states(schlaf_t_entity) | float(0) | round(1) }}"
+      schlaf_h: "{{ states(schlaf_h_entity) | float(0) | round(0) }}"
+      bad_t: "{{ states(bad_t_entity) | float(0) | round(1) }}"
+      bad_h: "{{ states(bad_h_entity) | float(0) | round(0) }}"
+      wc_t: "{{ states(wc_t_entity) | float(0) | round(1) }}"
+      wc_h: "{{ states(wc_h_entity) | float(0) | round(0) }}"
+      bad_window_open: "{{ is_state(bad_w_entity, 'on') }}"
+      bad_window_icon: "{{ 'window-open-variant' if bad_window_open else 'window-closed-variant' }}"
+      bad_window_color: "{{ 'accent' if bad_window_open else 'black' }}"
+      updated_at: "{{ now().strftime('%H:%M') }}"
+
+  - action: open_epaper_link.drawcustom
+    target: !input display_target
+    data:
+      background: white
+      rotate: 0
+      dither: 2
+      ttl: 300
+      payload:
+        - type: rectangle
+          x_start: 0
+          y_start: 0
+          x_end: 399
+          y_end: 34
+          fill: red
+          outline: black
+
+        - type: text
+          value: KLIMAÜBERSICHT
+          x: 12
+          y: 8
+          font: "{{ font_file }}"
+          size: 24
+          color: white
+
+        - type: text
+          value: "{{ updated_at }}"
+          x: 390
+          y: 10
+          anchor: rt
+          font: "{{ font_file }}"
+          size: 18
+          color: black
+
+        - type: rectangle
+          x_start: 6
+          y_start: 42
+          x_end: 394
+          y_end: 294
+          outline: black
+          width: 2
+
+        - type: line
+          x_start: 200
+          y_start: 42
+          x_end: 200
+          y_end: 294
+          width: 2
+          fill: black
+
+        - type: line
+          x_start: 6
+          y_start: 168
+          x_end: 394
+          y_end: 168
+          width: 2
+          fill: black
+
+        - type: text
+          value: WOHNZIMMER
+          x: 16
+          y: 52
+          font: "{{ font_file }}"
+          size: 20
+          color: black
+
+        - type: text
+          value: "T {{ wohn_t }} C"
+          x: 16
+          y: 92
+          font: "{{ font_file }}"
+          size: 28
+          color: black
+
+        - type: text
+          value: "H {{ wohn_h }} %"
+          x: 16
+          y: 132
+          font: "{{ font_file }}"
+          size: 24
+          color: black
+
+        - type: text
+          value: SCHLAFZIMMER
+          x: 214
+          y: 52
+          font: "{{ font_file }}"
+          size: 20
+          color: black
+
+        - type: text
+          value: "T {{ schlaf_t }} C"
+          x: 214
+          y: 92
+          font: "{{ font_file }}"
+          size: 28
+          color: black
+
+        - type: text
+          value: "H {{ schlaf_h }} %"
+          x: 214
+          y: 132
+          font: "{{ font_file }}"
+          size: 24
+          color: black
+
+        - type: text
+          value: BADEZIMMER
+          x: 16
+          y: 178
+          font: "{{ font_file }}"
+          size: 20
+          color: black
+
+        - type: text
+          value: "T {{ bad_t }} C"
+          x: 16
+          y: 218
+          font: "{{ font_file }}"
+          size: 28
+          color: black
+
+        - type: text
+          value: "H {{ bad_h }} %"
+          x: 16
+          y: 258
+          font: "{{ font_file }}"
+          size: 24
+          color: black
+
+        - type: icon
+          value: "{{ bad_window_icon }}"
+          x: 130
+          y: 246
+          size: 22
+          color: "{{ bad_window_color }}"
+
+        - type: text
+          value: WC-ZIMMER
+          x: 214
+          y: 178
+          font: "{{ font_file }}"
+          size: 20
+          color: black
+
+        - type: text
+          value: "T {{ wc_t }} C"
+          x: 214
+          y: 218
+          font: "{{ font_file }}"
+          size: 28
+          color: black
+
+        - type: text
+          value: "H {{ wc_h }} %"
+          x: 214
+          y: 258
+          font: "{{ font_file }}"
+          size: 24
+          color: black
