@@ -1,0 +1,111 @@
+blueprint:
+  name: "OpenEPaperLink: Countdown bis Datum (DE)"
+  description: >
+    Rendert ein einfaches Countdown-Bild (deutsche Texte) und sendet es an ein OpenEPaperLink-Tag.
+    Zeigt 'noch X Tage', 'morgen', 'heute', 'gestern' oder 'seit X Tagen'.
+  domain: automation
+
+  input:
+    target_date:
+      name: Zieldatum
+      description: "Datum im Format YYYY-MM-DD (z.B. 2026-12-24)"
+      selector:
+        text: {}
+
+    title:
+      name: Titelzeile
+      description: "z.B. 'Weihnachten' / 'Urlaub' / 'Geburtstag'"
+      default: "Countdown"
+      selector:
+        text: {}
+
+    tag_device:
+      name: OpenEPaperLink Tag (Device)
+      description: "Wähle das Tag-Device aus dem OpenEPaperLink-Integrationseintrag."
+      selector:
+        device:
+          integration: openepaperlink
+
+    update_time:
+      name: Tägliche Update-Uhrzeit
+      description: "Wann soll täglich aktualisiert werden?"
+      default: "00:05:00"
+      selector:
+        time: {}
+
+    also_on_startup:
+      name: Auch bei Home Assistant Start aktualisieren
+      default: true
+      selector:
+        boolean: {}
+
+mode: single
+
+trigger:
+  - platform: time
+    at: !input update_time
+  - platform: homeassistant
+    event: start
+
+condition:
+  - condition: or
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.platform != 'homeassistant' }}"
+      - condition: template
+        value_template: "{{ (trigger.platform == 'homeassistant') and (iif(blueprint.input.also_on_startup, true, false)) }}"
+
+variables:
+  v_target_date: !input target_date
+  v_title: !input title
+
+  v_days_diff: >-
+    {% set t = strptime(v_target_date, '%Y-%m-%d') %}
+    {% set today = now().date() %}
+    {{ (t.date() - today).days }}
+
+  v_line2: >-
+    {% set d = v_days_diff | int %}
+    {% if d > 1 %}
+      noch {{ d }} Tage
+    {% elif d == 1 %}
+      morgen
+    {% elif d == 0 %}
+      heute
+    {% elif d == -1 %}
+      gestern
+    {% else %}
+      seit {{ (d * -1) }} Tagen
+    {% endif %}
+
+  v_date_de: >-
+    {% set t = strptime(v_target_date, '%Y-%m-%d') %}
+    {{ t.strftime('%d.%m.%Y') }}
+
+action:
+  - service: image.create
+    data:
+      name: "oep_countdown_{{ this.entity_id | replace('automation.', '') }}"
+      mime_type: "image/png"
+      source: >-
+        {% set w = 400 %}
+        {% set h = 300 %}
+        {% set title = v_title %}
+        {% set line2 = v_line2 %}
+        {% set date = v_date_de %}
+        data:image/svg+xml;utf8,
+        <svg xmlns='http://www.w3.org/2000/svg' width='{{w}}' height='{{h}}'>
+          <rect x='0' y='0' width='{{w}}' height='{{h}}' fill='white'/>
+          <text x='20' y='70' font-family='DejaVu Sans, Arial' font-size='42' fill='black'>{{ title }}</text>
+          <text x='20' y='150' font-family='DejaVu Sans, Arial' font-size='56' font-weight='700' fill='black'>{{ line2 }}</text>
+          <text x='20' y='220' font-family='DejaVu Sans, Arial' font-size='32' fill='black'>{{ date }}</text>
+          <line x1='20' y1='95' x2='380' y2='95' stroke='black' stroke-width='2'/>
+        </svg>
+
+  - choose:
+      - conditions: []
+        sequence:
+          - service: openepaperlink.set_tag_image
+            data:
+              device_id: !input tag_device
+              image_entity: "image.oep_countdown_{{ this.entity_id | replace('automation.', '') }}"
