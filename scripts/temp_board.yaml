@@ -14,9 +14,9 @@ blueprint:
     font_file:
       name: Schriftart
       description: >-
-        Dateiname oder absoluter Pfad zur Schriftart (z. B. rbm.ttf oder
-        /media/fonts/DejaVuSans-Bold.ttf).
-      default: rbm.ttf
+        Dateiname oder absoluter Pfad zur Schriftart (z. B.
+        fonts/atkinson_hyperlegible/AtkinsonHyperlegible-Regular.ttf).
+      default: fonts/atkinson_hyperlegible/AtkinsonHyperlegible-Regular.ttf
 
     wohnzimmer_temp_entity:
       name: Wohnzimmer Temperatur Entitaet
