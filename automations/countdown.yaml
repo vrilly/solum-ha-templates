@@ -19,12 +19,19 @@ blueprint:
       selector:
         text: {}
 
+    font_file:
+      name: Schriftart
+      description: >-
+        Dateiname oder absoluter Pfad zur Schriftart (z. B. rbm.ttf oder
+        /media/fonts/DejaVuSans-Bold.ttf).
+      default: rbm.ttf
+
     tag_device:
       name: OpenEPaperLink Tag (Device)
       description: "Wähle das Tag-Device aus dem OpenEPaperLink-Integrationseintrag."
       selector:
         device:
-          integration: openepaperlink
+          integration: open_epaper_link
 
     update_time:
       name: Tägliche Update-Uhrzeit
@@ -58,6 +65,7 @@ condition:
 variables:
   v_target_date: !input target_date
   v_title: !input title
+  v_font_file: !input font_file
 
   v_days_diff: >-
     {% set t = strptime(v_target_date, '%Y-%m-%d') %}
@@ -83,29 +91,51 @@ variables:
     {{ t.strftime('%d.%m.%Y') }}
 
 action:
-  - service: image.create
+  - action: open_epaper_link.drawcustom
+    target:
+      device_id: !input tag_device
     data:
-      name: "oep_countdown_{{ this.entity_id | replace('automation.', '') }}"
-      mime_type: "image/png"
-      source: >-
-        {% set w = 400 %}
-        {% set h = 300 %}
-        {% set title = v_title %}
-        {% set line2 = v_line2 %}
-        {% set date = v_date_de %}
-        data:image/svg+xml;utf8,
-        <svg xmlns='http://www.w3.org/2000/svg' width='{{w}}' height='{{h}}'>
-          <rect x='0' y='0' width='{{w}}' height='{{h}}' fill='white'/>
-          <text x='20' y='70' font-family='DejaVu Sans, Arial' font-size='42' fill='black'>{{ title }}</text>
-          <text x='20' y='150' font-family='DejaVu Sans, Arial' font-size='56' font-weight='700' fill='black'>{{ line2 }}</text>
-          <text x='20' y='220' font-family='DejaVu Sans, Arial' font-size='32' fill='black'>{{ date }}</text>
-          <line x1='20' y1='95' x2='380' y2='95' stroke='black' stroke-width='2'/>
-        </svg>
+      background: white
+      rotate: 0
+      dither: 2
+      ttl: 300
+      payload:
+        - type: rectangle
+          x_start: 0
+          y_start: 0
+          x_end: 399
+          y_end: 299
+          fill: white
+          outline: white
 
-  - choose:
-      - conditions: []
-        sequence:
-          - service: openepaperlink.set_tag_image
-            data:
-              device_id: !input tag_device
-              image_entity: "image.oep_countdown_{{ this.entity_id | replace('automation.', '') }}"
+        - type: text
+          value: "{{ v_title }}"
+          x: 20
+          y: 70
+          font: "{{ v_font_file }}"
+          size: 42
+          color: black
+
+        - type: line
+          x_start: 20
+          y_start: 95
+          x_end: 380
+          y_end: 95
+          width: 2
+          fill: black
+
+        - type: text
+          value: "{{ v_line2 }}"
+          x: 20
+          y: 150
+          font: "{{ v_font_file }}"
+          size: 56
+          color: black
+
+        - type: text
+          value: "{{ v_date_de }}"
+          x: 20
+          y: 220
+          font: "{{ v_font_file }}"
+          size: 32
+          color: black
